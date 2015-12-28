@@ -87,8 +87,14 @@ logic :: Field -> A.Value -> Parser Expr
 logic k v = empty
 
 constraints :: Field -> A.Value -> Parser Expr
-constraints k (A.Object o) = ExprAND <$> constraints where
-    constraints = H.foldlWithKey' fAcc (pure []) o
+constraints k (A.Object o) = do
+  vals <- H.foldlWithKey' fAcc (pure []) o
+  return $ case vals of
+    -- One constraint only
+    [x] -> x
+    -- Multiple constraints
+    xs -> ExprAND xs
+  where
     fAcc acc op v  = liftA2 (:) (unaryOp k op v) acc
 constraints _ _ = empty
 
