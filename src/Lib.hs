@@ -9,11 +9,11 @@ import Language.SQL.SimpleSQL.Syntax
 import Language.SQL.SimpleSQL.Pretty
 import qualified Data.Aeson as A
 import Data.Aeson.Types (Parser, parse)
--- import Data.Attoparsec.ByteString (Parser)
 import Data.Aeson ((.:), (.=))
 import qualified Data.Text as T
-import Data.HashMap.Strict as H
+import qualified Data.HashMap.Strict as H
 import Data.Scientific as S
+import Control.Applicative
 
 import Test.QuickCheck
 
@@ -31,28 +31,35 @@ prettyExpression = prettyValueExpr SQL2011
 type Field = T.Text
 type Query = [Expr]
 
+{-
+A query {field1: op1, field2: op2, ...} is effectively
+  field1 op1 AND field2 op2 AND ...
+or field* can be a logical operator
+
+Therefore the first level of parsing is to AND together key/value pairs
+-}
+
 data Expr =
     ExprEQ Field A.Value
-  | ExprLT Field S.Scientific
-  | ExprLE Field S.Scientific
-  | ExprGT Field S.Scientific
-  | ExprGE Field S.Scientific
-  | ExprNE Field S.Scientific
-  | ExprIN Field [A.Value]
-  | ExprNIN Field [A.Value]
-  | ExprOR [Expr]
-  | ExprAND [Expr]
-  | ExprNOT Expr
-  | ExprNOR [Expr]
+  | ExprLT Field A.Value
+  | ExprLE Field A.Value
+  | ExprGT Field A.Value
+  | ExprGE Field A.Value
+  | ExprNE Field A.Value
+  | ExprIN Field A.Array
+  | ExprNIN Field A.Array
   | ExprMOD Field Int Int
   | ExprREGEX Field T.Text (Maybe T.Text)
   | ExprTEXT Field T.Text (Maybe T.Text)
-  | ExprWHERE T.Text
-  | ExprALL Field [A.Value]
+  | ExprALL Field A.Array
   | ExprEMATCH Field Query
   | ExprSIZE Field Int
   | ExprEXISTS Field Bool
   | ExprTYPE Field Int
+  | ExprOR [Expr]
+  | ExprAND [Expr]
+  | ExprNOT Expr
+  | ExprNOR [Expr]
   deriving (Show, Eq)
 
 -- TODO: Geospatial operators
@@ -60,25 +67,69 @@ data Expr =
 
 -- TODO : instance FromJSON Expr where
 
+query :: A.Value -> Parser Expr
+query (A.Object o) = ExprAND <$> (mapM kvpair (H.toList o))
 
--- Let's try and parse a simple expression {"foo": {"$eq": "bar"}}
--- NOTE: {a: {$eq: b} == {a: b}
+-- | parse a property/value pair of a MongoDB JSON expression
+kvpair :: (Field, A.Value) -> Parser Expr
+kvpair (k, v) = logic k v
+            <|> constraints k v
+            <|> pure (ExprEQ k v)
 
-parseEq :: A.Value -> Parser Expr
-parseEq (A.Object o) = return $ ExprAND (H.foldlWithKey' acc [] o)
-  where
-    acc as k v = build k v : as
-    build k v = ExprEQ k v
 
-prop_parseEq :: String -> String -> Bool
-prop_parseEq a b = parse parseEq (A.object [ a' .= b' ]) == A.Success (ExprAND [ExprEQ a' (A.String b')]) where
+{-
+  | ExprOR [Expr]
+  | ExprAND [Expr]
+  | ExprNOT Expr
+  | ExprNOR [Expr]
+-}
+logic :: Field -> A.Value -> Parser Expr
+logic k v = empty
+
+constraints :: Field -> A.Value -> Parser Expr
+constraints k (A.Object o) = ExprAND <$> constraints where
+    constraints = H.foldlWithKey' fAcc (pure []) o
+    fAcc acc op v  = liftA2 (:) (unaryOp k op v) acc
+constraints _ _ = empty
+
+unaryOp :: Field -> T.Text  -> A.Value -> Parser Expr
+unaryOp field "$eq" v            = ExprEQ field <$> pure v
+unaryOp field "$lt" v            = ExprLT field <$> pure v
+unaryOp field "$gt" v            = ExprGT field <$> pure v
+unaryOp field "$lte" v           = ExprLE field <$> pure v
+unaryOp field "$gte" v           = ExprGE field <$> pure v
+unaryOp field "$in" (A.Array a)  = ExprIN field <$> pure a
+unaryOp field "$nin" (A.Array a) = ExprNIN field <$> pure a
+unaryOp field "$all" (A.Array a) = ExprALL field <$> pure a
+unaryOp field "$exists" (A.Bool b) = ExprEXISTS field <$> pure b
+unaryOp field "$type" (A.Number b) = ExprTYPE field <$> case (toBoundedInteger b) of
+    Nothing -> empty
+    Just i -> pure i
+unaryOp field "$size" (A.Number b) = ExprSIZE field <$> case (toBoundedInteger b) of
+    Nothing -> empty
+    Just i -> pure i
+-- TODO : $elemMatch requires parser context
+-- unaryOp field "$elemMatch" (A.Array a) = ExprEMATCH $ query a
+
+{-
+  | ExprREGEX Field T.Text (Maybe T.Text)
+  | ExprTEXT Field T.Text (Maybe T.Text)
+-}
+
+
+
+-- ---------------------------------------------------------------------------
+-- Properties
+
+prop_eq :: String -> String -> Bool
+prop_eq a b = parse query (A.object [ a' .= b' ]) == A.Success (ExprAND [ExprEQ a' (A.String b')]) where
   a' = T.pack a
   b' = T.pack a
 
-prop_parseEq2 :: String -> String -> Bool
-prop_parseEq2 a b =
-  parse parseEq (A.object [ a' .= A.object [ "$eq" .= b' ] ]) == A.Success (ExprAND [ExprEQ a' (A.String b')]) where
+prop_eq2 :: String -> String -> Bool
+prop_eq2 a b =
+  parse query (A.object [ a' .= A.object [ "$eq" .= b' ] ]) == A.Success (ExprAND [ExprEQ a' (A.String b')]) where
     a' = T.pack a
     b' = T.pack a
 
-check = mapM quickCheck [prop_parseEq, prop_parseEq2]
+check = mapM quickCheck [prop_eq, prop_eq2]
