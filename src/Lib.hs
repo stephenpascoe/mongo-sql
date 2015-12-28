@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lib
-    ( someFunc
+    ( query
+    , Expr(..)
     ) where
 
 import Language.SQL.SimpleSQL.Parser
@@ -14,8 +15,6 @@ import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
 import Data.Scientific as S
 import Control.Applicative
-
-import Test.QuickCheck
 
 someFunc :: IO ()
 someFunc = putStrLn.show $ parseQueryExpr SQL2011 "" Nothing "select a + 2"
@@ -110,10 +109,10 @@ unaryOp field "$all" (A.Array a) = ExprALL field <$> pure a
 unaryOp field "$exists" (A.Bool b) = ExprEXISTS field <$> pure b
 unaryOp field "$type" (A.Number b) = ExprTYPE field <$> case (toBoundedInteger b) of
     Nothing -> empty
-    Just i -> pure i
+    Just i  -> pure i
 unaryOp field "$size" (A.Number b) = ExprSIZE field <$> case (toBoundedInteger b) of
     Nothing -> empty
-    Just i -> pure i
+    Just i  -> pure i
 -- TODO : $elemMatch requires parser context
 -- unaryOp field "$elemMatch" (A.Array a) = ExprEMATCH $ query a
 
@@ -126,16 +125,3 @@ unaryOp field "$size" (A.Number b) = ExprSIZE field <$> case (toBoundedInteger b
 
 -- ---------------------------------------------------------------------------
 -- Properties
-
-prop_eq :: String -> String -> Bool
-prop_eq a b = parse query (A.object [ a' .= b' ]) == A.Success (ExprAND [ExprEQ a' (A.String b')]) where
-  a' = T.pack a
-  b' = T.pack a
-
-prop_eq2 :: String -> String -> Bool
-prop_eq2 a b =
-  parse query (A.object [ a' .= A.object [ "$eq" .= b' ] ]) == A.Success (ExprAND [ExprEQ a' (A.String b')]) where
-    a' = T.pack a
-    b' = T.pack a
-
-check = mapM quickCheck [prop_eq, prop_eq2]
