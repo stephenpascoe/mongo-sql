@@ -13,6 +13,7 @@ import Data.Aeson.Types (Parser, parse)
 import Data.Aeson ((.:), (.=))
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
+import qualified Data.Vector as V
 import Data.Scientific as S
 import Control.Applicative
 
@@ -67,7 +68,13 @@ data Expr =
 -- TODO : instance FromJSON Expr where
 
 query :: A.Value -> Parser Expr
-query (A.Object o) = ExprAND <$> (mapM kvpair (H.toList o))
+query (A.Object o) = do
+  exprs <- (mapM kvpair (H.toList o))
+  return $ case exprs of
+    -- single value case
+    [expr] -> expr
+    -- multiple value case
+    lst -> ExprAND lst
 
 -- | parse a property/value pair of a MongoDB JSON expression
 kvpair :: (Field, A.Value) -> Parser Expr
@@ -83,10 +90,15 @@ kvpair (k, v) = logic k v
   | ExprNOR [Expr]
 -}
 logic :: Field -> A.Value -> Parser Expr
-logic k v = empty
+logic "$not" expr = ExprNOT <$> query expr
+logic op expr = A.withArray "Logical operator" f expr where
+  f a = case op of
+    "$or" -> ExprOR <$> mapM query (V.toList a)
+    "$and" -> ExprAND <$> mapM query (V.toList a)
+    "$nor" -> ExprAND <$> mapM query (V.toList a)
 
 constraints :: Field -> A.Value -> Parser Expr
-constraints k (A.Object o) = do
+constraints k = A.withObject "Object as constraints" $ \o -> do
   vals <- H.foldlWithKey' fAcc (pure []) o
   return $ case vals of
     -- One constraint only
@@ -95,7 +107,6 @@ constraints k (A.Object o) = do
     xs -> ExprAND xs
   where
     fAcc acc op v  = liftA2 (:) (unaryOp k op v) acc
-constraints _ _ = empty
 
 unaryOp :: Field -> T.Text  -> A.Value -> Parser Expr
 unaryOp field "$eq" v            = ExprEQ field <$> pure v
@@ -114,7 +125,7 @@ unaryOp field "$size" (A.Number b) = ExprSIZE field <$> case (toBoundedInteger b
     Nothing -> empty
     Just i  -> pure i
 -- TODO : $elemMatch requires parser context
--- unaryOp field "$elemMatch" (A.Array a) = ExprEMATCH $ query a
+unaryOp field "$elemMatch" (A.Array a) = ExprEMATCH field <$> mapM query (V.toList a)
 
 {-
   | ExprREGEX Field T.Text (Maybe T.Text)
