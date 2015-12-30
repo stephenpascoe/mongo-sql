@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lib
-    ( query
-    , Expr(..)
+    ( Expr(..)
     ) where
 
 import Language.SQL.SimpleSQL.Parser

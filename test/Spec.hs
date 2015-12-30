@@ -6,29 +6,27 @@ import Test.Hspec
 import Test.QuickCheck
 import Lib
 
-import qualified Data.Aeson as A
-import Data.Aeson.Types (Parser, parse)
-import Data.Aeson ((.:), (.=))
+import Data.Aeson as A
 import qualified Data.Text as T
-import qualified Data.HashMap.Strict as H
-import Data.Scientific as S
-import Data.Text.Format
 
 instance Arbitrary T.Text where
   arbitrary = T.pack <$> arbitrary
   shrink xs = T.pack <$> shrink (T.unpack xs)
 
 
+fromJSON_eq obj expr = fromJSON obj == A.Success expr
+
+
 prop_eq1 :: T.Text -> T.Text -> Bool
-prop_eq1 a b = parse query (A.object [ a .= b ]) == A.Success (ExprEQ a (A.String b))
+prop_eq1 a b = fromJSON_eq (object [ a .= b ]) (ExprEQ a (String b))
+
 
 prop_eq2 :: T.Text -> T.Text -> Bool
-prop_eq2 a b =
-  parse query (A.object [ a .= A.object [ "$eq" .= b ] ]) == A.Success (ExprEQ a (A.String b))
+prop_eq2 a b = fromJSON_eq (object [ a .= object [ "$eq" .= b ] ]) (ExprEQ a (String b))
 
 prop_and1 :: T.Text -> T.Text -> T.Text -> T.Text -> Bool
-prop_and1 a b c d =
-  parse query (A.object [ "$and" .= [A.object [a .= b], A.object [c .= d]] ]) == A.Success (ExprAND [ExprEQ a (A.String b), ExprEQ c (A.String d)])
+prop_and1 a b c d = fromJSON_eq (object [ "$and" .= [object [a .= b], object [c .= d]] ])
+                                (ExprAND [ExprEQ a (String b), ExprEQ c (String d)])
 
 main :: IO ()
 main = hspec $ do
