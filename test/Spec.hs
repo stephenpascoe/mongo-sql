@@ -14,7 +14,11 @@ instance Arbitrary T.Text where
   shrink xs = T.pack <$> shrink (T.unpack xs)
 
 
+fromJSON_eq :: Value -> Expr -> Bool
 fromJSON_eq obj expr = fromJSON obj == A.Success expr
+
+-- toJSON_eq :: Expr -> Value -> Bool
+-- toJSON_eq expr obj = toJSON expr == obj
 
 
 prop_eq1 :: T.Text -> T.Text -> Bool

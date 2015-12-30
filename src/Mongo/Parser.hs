@@ -59,15 +59,16 @@ unaryOp field "$in" (Array a)  = ExprIN field <$> pure a
 unaryOp field "$nin" (Array a) = ExprNIN field <$> pure a
 unaryOp field "$all" (Array a) = ExprALL field <$> pure a
 unaryOp field "$exists" (Bool b) = ExprEXISTS field <$> pure b
-unaryOp field "$type" (Number b) = ExprTYPE field <$> case (S.toBoundedInteger b) of
+unaryOp field "$type" (Number x) = ExprTYPE field <$> case (S.toBoundedInteger x) of
     Nothing -> empty
     Just i  -> pure i
-unaryOp field "$size" (Number b) = ExprSIZE field <$> case (S.toBoundedInteger b) of
+unaryOp field "$size" (Number x) = ExprSIZE field <$> case (S.toBoundedInteger x) of
     Nothing -> empty
     Just i  -> pure i
 unaryOp field "$elemMatch" (Array a) = ExprEMATCH field <$> mapM query (V.toList a)
 
 {- TODO
+  | ExprMOD Field Int Int
   | ExprREGEX Field T.Text (Maybe T.Text)
   | ExprTEXT Field T.Text (Maybe T.Text)
 -}

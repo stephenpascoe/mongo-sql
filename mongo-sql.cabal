@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib, Types, Mongo.Parser
+  exposed-modules:     Lib, Types, Mongo.Parser, Mongo.Encoder
   build-depends:       base >= 4.7 && < 5
                      , groom >= 0.1.2 && < 0.2
                      , simple-sql-parser >= 0.4.1 && < 0.6.0
