@@ -39,33 +39,34 @@ or field* can be a logical operator
 Therefore the first level of parsing is to AND together key/value pairs
 -}
 
-data Expr =
-    ExprEQ Field A.Value
-  | ExprLT Field A.Value
-  | ExprLE Field A.Value
-  | ExprGT Field A.Value
-  | ExprGE Field A.Value
-  | ExprNE Field A.Value
-  | ExprIN Field A.Array
-  | ExprNIN Field A.Array
-  | ExprMOD Field Int Int
-  | ExprREGEX Field T.Text (Maybe T.Text)
-  | ExprTEXT Field T.Text (Maybe T.Text)
-  | ExprALL Field A.Array
-  | ExprEMATCH Field Query
-  | ExprSIZE Field Int
-  | ExprEXISTS Field Bool
-  | ExprTYPE Field Int
-  | ExprOR [Expr]
-  | ExprAND [Expr]
-  | ExprNOT Expr
-  | ExprNOR [Expr]
-  deriving (Show, Eq)
+data Expr = ExprEQ Field A.Value
+          | ExprLT Field A.Value
+          | ExprLE Field A.Value
+          | ExprGT Field A.Value
+          | ExprGE Field A.Value
+          | ExprNE Field A.Value
+          | ExprIN Field A.Array
+          | ExprNIN Field A.Array
+          | ExprMOD Field Int Int
+          | ExprREGEX Field T.Text (Maybe T.Text)
+          | ExprTEXT Field T.Text (Maybe T.Text)
+          | ExprALL Field A.Array
+          | ExprEMATCH Field Query
+          | ExprSIZE Field Int
+          | ExprEXISTS Field Bool
+          | ExprTYPE Field Int
+          | ExprOR [Expr]
+          | ExprAND [Expr]
+          | ExprNOT Expr
+          | ExprNOR [Expr]
+          deriving (Show, Eq)
 
 -- TODO: Geospatial operators
 -- TODO: Projection operators
 
 -- TODO : instance FromJSON Expr where
+instance A.FromJSON Expr where
+  parseJSON = query
 
 query :: A.Value -> Parser Expr
 query (A.Object o) = do
@@ -82,13 +83,6 @@ kvpair (k, v) = logic k v
             <|> constraints k v
             <|> pure (ExprEQ k v)
 
-
-{-
-  | ExprOR [Expr]
-  | ExprAND [Expr]
-  | ExprNOT Expr
-  | ExprNOR [Expr]
--}
 logic :: Field -> A.Value -> Parser Expr
 logic "$not" expr = ExprNOT <$> query expr
 logic op expr = A.withArray "Logical operator" f expr where
@@ -124,15 +118,9 @@ unaryOp field "$type" (A.Number b) = ExprTYPE field <$> case (toBoundedInteger b
 unaryOp field "$size" (A.Number b) = ExprSIZE field <$> case (toBoundedInteger b) of
     Nothing -> empty
     Just i  -> pure i
--- TODO : $elemMatch requires parser context
 unaryOp field "$elemMatch" (A.Array a) = ExprEMATCH field <$> mapM query (V.toList a)
 
-{-
+{- TODO
   | ExprREGEX Field T.Text (Maybe T.Text)
   | ExprTEXT Field T.Text (Maybe T.Text)
 -}
-
-
-
--- ---------------------------------------------------------------------------
--- Properties
