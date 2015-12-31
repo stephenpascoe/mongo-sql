@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Lib
     ( Expr(..)
     ) where
@@ -10,9 +8,6 @@ import Language.SQL.SimpleSQL.Pretty
 
 import Types
 import Mongo.Parser
-
-someFunc :: IO ()
-someFunc = putStrLn.show $ parseQueryExpr SQL2011 "" Nothing "select a + 2"
 
 
 -- Convenience function for parsing expressions

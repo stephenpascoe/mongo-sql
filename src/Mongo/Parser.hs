@@ -1,11 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Mongo.Parser () where
 
 import Control.Applicative
 
 import Data.Aeson
-import Data.Aeson.Types (Parser, parse)
+import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
@@ -23,6 +21,7 @@ query (Object o) = do
     [expr] -> expr
     -- multiple value case
     lst -> ExprAND lst
+query _ = empty
 
 -- | parse a property/value pair of a MongoDB JSON expression
 kvpair :: (Field, Value) -> Parser Expr
@@ -37,6 +36,7 @@ logic op expr = withArray "Logical operator" f expr where
     "$or" -> ExprOR <$> mapM query (V.toList a)
     "$and" -> ExprAND <$> mapM query (V.toList a)
     "$nor" -> ExprAND <$> mapM query (V.toList a)
+    _ -> empty
 
 constraints :: Field -> Value -> Parser Expr
 constraints k = withObject "Object as constraints" $ \o -> do
@@ -66,6 +66,7 @@ unaryOp field "$size" (Number x) = ExprSIZE field <$> case (S.toBoundedInteger x
     Nothing -> empty
     Just i  -> pure i
 unaryOp field "$elemMatch" (Array a) = ExprEMATCH field <$> mapM query (V.toList a)
+unaryOp _ _ _ = empty
 
 {- TODO
   | ExprMOD Field Int Int
