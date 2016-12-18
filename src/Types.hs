@@ -2,9 +2,13 @@
 
 module Types (
     Expr (..)
-  , FieldConstraint (..)
+  , FieldOp (..)
   , Field
+  , Operator
   , BsonType
+  , eq, lt, gt, ge, lte, gte, ne, in_, nin, mod_, regex, text, all_
+  , ematch, size, exists, type_
+
   , intToBsonType
   , bsonTypeToInt
   ) where
@@ -14,6 +18,7 @@ import qualified Data.Aeson as A
 
 
 type Field = T.Text
+type Operator = T.Text
 type Value = A.Value
 
 {-
@@ -24,30 +29,53 @@ or field* can be a logical operator
 Therefore the first level of parsing is to AND together key/value pairs
 -}
 
-data FieldConstraint = ConstrEQ Value
-                    | ConstrLT Value
-                    | ConstrLE Value
-                    | ConstrGT Value
-                    | ConstrGE Value
-                    -- $ne expands to ExprNOT (ExprConstr field (ConstrEq value))
-                    | ConstrIN [Value]
-                    -- $nin expands to ExprNot (ExprConstr field (ConstrIn array))
-                    | ConstrMOD Int Int
-                    | ConstrREGEX T.Text (Maybe T.Text)
-                    | ConstrTEXT T.Text (Maybe T.Text)
-                    -- $all expands to ExprAnd (ExprConstr field val1) (ExprConstr field val2)
-                    | ConstrEMATCH [Expr]
-                    | ConstrSIZE Int
-                    | ConstrEXISTS Bool
-                    | ConstrTYPE BsonType
-                    deriving (Show, Eq)
+data FieldOp = OpEQ Field Value
+             | OpLT Field Value
+             | OpLE Field Value
+             | OpGT Field Value
+             | OpGE Field Value
+             | OpLTE Field Value
+             | OpGTE Field Value
+               -- $ne expands to ExprNOT (ExprConstr (OpEQ field value))
+             | OpIN Field [Value]
+               -- $nin expands to ExprNot (ExprConstr (OpIN field array))
+             | OpMOD Field Int Int
+             | OpREGEX Field T.Text (Maybe T.Text)
+             | OpTEXT Field T.Text (Maybe T.Text)
+               -- $all expands to ExprAnd [(ExprConstr (OpEQ field val1)),
+               --                          (ExprConstr (OpEQ field val2))]
+             | OpEMATCH Field [Expr]
+             | OpSIZE Field Integer
+             | OpEXISTS Field Bool
+             | OpTYPE Field BsonType
+             deriving (Show, Eq)
 
-data Expr = ExprConstr Field FieldConstraint
-          | ExprOR Expr Expr
-          | ExprAND Expr Expr
+data Expr = ExprConstr FieldOp
+          | ExprOR [Expr]
+          | ExprAND [Expr]
           | ExprNOT Expr
           -- Note: $nor expands to ExprNOT (ExprOR A B)
           deriving (Show, Eq)
+
+-- Constructing operator expressions
+eq = OpEQ
+lt = OpLT
+gt = OpGT
+ge = OpGE
+lte = OpLTE
+gte = OpGTE
+ne field value = ExprNOT (ExprConstr (OpEQ field value))
+in_ = OpIN
+nin field value = ExprNOT (ExprConstr (in_ field value))
+mod_ = OpMOD
+regex = OpREGEX
+text = OpTEXT
+all_ field values = ExprAND $ fmap f values where
+  f value = ExprConstr (OpEQ field value)
+ematch = OpEMATCH
+size = OpSIZE
+exists = OpEXISTS
+type_ = OpTYPE
 
 -- TODO: use bson library?
 data BsonType = Double            -- 1
@@ -72,7 +100,7 @@ data BsonType = Double            -- 1
               | MaxKey            -- 127
               deriving (Show, Eq)
 
-bsonTypeToInt :: BsonType -> Int
+bsonTypeToInt :: BsonType -> Integer
 bsonTypeToInt Double = 1
 bsonTypeToInt String = 2
 bsonTypeToInt Object = 3
@@ -95,7 +123,7 @@ bsonTypeToInt MinKey = -1
 bsonTypeToInt MaxKey = 127
 
 
-intToBsonType :: Int -> BsonType
+intToBsonType :: Integer -> BsonType
 intToBsonType  1 = Double
 intToBsonType  2 = String
 intToBsonType  3 = Object
@@ -116,6 +144,7 @@ intToBsonType  17 = Timestamp
 intToBsonType  18 = Integer64
 intToBsonType  (-1) = MinKey
 intToBsonType  127 = MaxKey
+
 
 -- TODO: Geospatial operators
 -- TODO: Projection operators

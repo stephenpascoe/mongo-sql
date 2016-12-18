@@ -37,6 +37,20 @@ prop_and1 :: T.Text -> T.Text -> T.Text -> T.Text -> Bool
 prop_and1 a b c d = fromJSON_eq (object [ "$and" .= [object [a .= b], object [c .= d]] ])
                                 (ExprAND [ExprEQ a (String b), ExprEQ c (String d)])
 
+
+eg1 = [r|{"$and": [
+           {"tracking_id.asic_id": "AAAA"},
+           {"membrane_summary": {"$exists": true}},
+           {"$or": [
+             {"context_tags": {"$exists": false}},
+             {"$and": [
+               {"context_tags.department": "qc"},
+               {"context_tags.experiment_type": "full_pore_insertion"}
+             ]}
+           ]}
+         ]}
+|]
+
 main :: IO ()
 Main = hspec $ do
   describe "MongoDB JSON query language" $ do

@@ -1,8 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
+-- TODO : change constraint terminology into Op.  Move field name into Op constructors
 module Mongo.Parser () where
 
 import Control.Applicative
+import Data.Maybe
 import Data.Aeson
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (Parser, typeMismatch)
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
@@ -12,72 +15,68 @@ import Types
 instance FromJSON Expr where
   parseJSON = query
 
--- TODO : Use higher-order functions here
+{-
+A field dict is a dict of field names where values are field constraints
+-}
 query :: Value -> Parser Expr
-query (Object o) = query' (H.toList o) where
-  query' [] = empty
-  query' [(field, expr)] = fieldExpression field expr
-  query' ((field, expr) : kvs) = ExprAND <$> fieldExpression field expr
-                                         <*> query' kvs
+query (Object obj) = collapseLogic . ExprAND <$> traverse f (H.toList obj) where
+  f ("$and", Array a) = ExprAND <$> traverse query (V.toList a)
+  f ("$or", Array a) = ExprOR <$> traverse query (V.toList a)
+  f (field, val) = fieldConstraint field val
 query _ = empty
 
+-- Remove duplicate and/or/not
+collapseLogic :: Expr -> Expr
+collapseLogic (ExprAND [expr]) = collapseLogic expr
+collapseLogic (ExprAND exprs) = ExprAND $ map collapseLogic exprs
+collapseLogic (ExprOR [expr])  = collapseLogic expr
+collapseLogic (ExprOR exprs) = ExprOR $ map collapseLogic exprs
+collapseLogic (ExprNOT expr) = ExprNOT $ collapseLogic expr
+collapseLogic expr = expr
 
--- | parse a property/value pair of a MongoDB JSON expression
-fieldExpression :: Field -> Value -> Parser Expr
-fieldExpression k v =  fieldLogic k v
-                   <|> fieldConstraints k v
-                   <|> pure (ExprConstr k (ConstrEQ v))
+{-
+A fieldConstraint is either a single value or a constraintExpr
+-}
+fieldConstraint :: Field -> Value -> Parser Expr
+fieldConstraint field (Object h) = ExprAND <$> traverse f (H.toList h) where
+  f ("$nin", val) = ExprNOT . ExprConstr <$> constraint "$in" field val
+  f ("$all", Array a) = ExprAND <$> traverse (fieldConstraint field) (V.toList a)
+  f (op, val) = ExprConstr <$> constraint op field val
 
-fieldLogic :: Field -> Value -> Parser Expr
-fieldLogic "$not" expr = ExprNOT <$> query expr
-fieldLogic op expr = withArray "Logical operator" f expr where
-  f a = case op of
-    "$or" -> foldOp ExprOR <$> mapM query (V.toList a)
-    "$and" -> foldOp ExprAND <$> mapM query (V.toList a)
-    "$nor" -> ExprNOT . foldOp ExprAND <$> mapM query (V.toList a)
-    _ -> empty
+fieldConstraint field val = ExprConstr <$> constraint "$eq" field val
 
--- TODO : Fix for empty expression list: make total
-foldOp :: (Expr -> Expr -> Expr) -> [Expr] -> Expr
-foldOp op [expr] = expr
-foldOp op (expr : exprs) = op expr $ foldOp op exprs
+{-
+constraint
+-}
+constraint :: Operator  -> Field -> Value -> Parser FieldOp
+constraint "$eq" f v            = pure $ eq f v
+constraint "$lt" f v            = pure $ lt f v
+constraint "$gt" f v            = pure $ gt f v
+constraint "$lte" f v           = pure $ lte f v
+constraint "$gte" f v           = pure $ gte f v
+constraint "$in" f (Array a)    = pure $ in_ f (V.toList a)
+constraint "$exists" f (Bool b) = pure $ exists f b
+constraint "$type" f (Number x) = type_ f <$> case S.floatingOrInteger x of
+    Left _ -> empty
+    Right i  -> pure $ intToBsonType i
+constraint "$size" f (Number x) = size f <$> case S.floatingOrInteger x of
+    Left _ -> empty
+    Right i  -> pure i
+constraint "$elemMatch" f (Array a) = ematch f <$> mapM query (V.toList a)
+
+constraint "$mod" field (Array a) = maybe empty pure $ do
+  [divisor, remainder] <- sequenceA $ map f (V.toList a)
+  return $ mod_ field divisor remainder
+  where
+    f (Number x) = S.toBoundedInteger x
 
 
--- | Build an expression of field constraints from a JSON object
-fieldConstraints :: Field -> Value -> Parser Expr
-fieldConstraints field (Object o) = build (H.toList o) where
-  build [] = empty
-  build [(k, v)] = fieldConstraint field k v
-  build ((k, v) : kvs) = ExprAND <$> fieldConstraint field k v
-                                 <*> build kvs
+constraint op field _ = fail $ "Constraint " ++ T.unpack op ++ " on " ++
+                               T.unpack field ++ " not regognised"
 
-fieldConstraint :: Field -> T.Text -> Value -> Parser Expr
-fieldConstraint field "$nin" v = ExprNOT . ExprConstr field <$> constraint "$in" v
-fieldConstraint field "$all" (Array a) = pure $ foldOp ExprAND $ map f (V.toList a) where
-  f v = ExprConstr field $ constraint v
-fieldConstraint field k v      = ExprConstr field <$> constraint k v
 
-constraint :: T.Text  -> Value -> Parser FieldConstraint
-constraint "$eq" v            = ConstrEQ <$> pure v
-constraint "$lt" v            = ConstrLT <$> pure v
-constraint "$gt" v            = ConstrGT <$> pure v
-constraint "$lte" v           = ConstrLE <$> pure v
-constraint "$gte" v           = ConstrGE <$> pure v
-constraint "$in" (Array a)    = ConstrIN <$> pure (V.toList a)
--- TODO expand: constraint "$nin" (Array a) = ExprNIN field <$> pure a
--- TODO expand: constraint "$all" (Array a) = ExprALL field <$> pure a
-constraint "$exists" (Bool b) = ConstrEXISTS <$> pure b
-constraint "$type" (Number x) = ConstrTYPE <$> case S.toBoundedInteger x of
-    Nothing -> empty
-    Just i  -> pure $ intToBsonType i
-constraint "$size" (Number x) = ConstrSIZE <$> case S.toBoundedInteger x of
-    Nothing -> empty
-    Just i  -> pure i
-constraint "$elemMatch" (Array a) = ConstrEMATCH <$> mapM query (V.toList a)
-constraint _ _ = empty
 
 {- TODO
-  | ExprMOD Field Int Int
   | ExprREGEX Field T.Text (Maybe T.Text)
   | ExprTEXT Field T.Text (Maybe T.Text)
 -}
