@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module MongoSQL.Test where
+module Main where
 
 import Test.Hspec
 import Test.QuickCheck
@@ -9,33 +9,25 @@ import Lib
 
 import Data.Aeson as A
 import qualified Data.Text as T
-import qualified Data.ByteString.Lazy as BL
+import qualified Data.Bson as B
 import Text.RawString.QQ
 
 
-fromJSON_eq :: Value -> Expr -> Bool
+fromJSON_eq :: A.Value -> QueryExpr -> Bool
 fromJSON_eq obj expr = fromJSON obj == A.Success expr
-
-json_eq :: BL.ByteString -> Expr -> Bool
-json_eq str expr = case decode str of
-  Nothing -> False
-  Just obj -> obj == expr
-
--- toJSON_eq :: Expr -> Value -> Bool
--- toJSON_eq expr obj = toJSON expr == obj
 
 
 prop_eq1 :: T.Text -> T.Text -> Bool
-prop_eq1 a b = fromJSON_eq (object [ a .= b ]) (ExprEQ a (String b))
+prop_eq1 a b = fromJSON_eq (object [ a .= b ]) (ExprConstr $ OpEQ a (B.String b))
 
 
 prop_eq2 :: T.Text -> T.Text -> Bool
-prop_eq2 a b = fromJSON_eq (object [ a .= object [ "$eq" .= b ] ]) (ExprEQ a (String b))
+prop_eq2 a b = fromJSON_eq (object [ a .= object [ "$eq" .= b ] ]) (ExprConstr $ OpEQ a (B.String b))
 
 
 prop_and1 :: T.Text -> T.Text -> T.Text -> T.Text -> Bool
 prop_and1 a b c d = fromJSON_eq (object [ "$and" .= [object [a .= b], object [c .= d]] ])
-                                (ExprAND [ExprEQ a (String b), ExprEQ c (String d)])
+                                (ExprAND [ExprConstr $ OpEQ a (B.String b), ExprConstr $ OpEQ c (B.String d)])
 
 
 eg1 = [r|{"$and": [
@@ -52,7 +44,7 @@ eg1 = [r|{"$and": [
 |]
 
 main :: IO ()
-Main = hspec $ do
+main = hspec $ do
   describe "MongoDB JSON query language" $ do
     it "encodes default equality" $ property prop_eq1
     it "encodes equality with $eq" $ property prop_eq2

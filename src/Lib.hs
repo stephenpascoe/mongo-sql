@@ -1,5 +1,6 @@
 module Lib
     ( Types.QueryExpr(..)
+    , Types.QueryOp(..)
     ) where
 
 import Language.SQL.SimpleSQL.Parser
