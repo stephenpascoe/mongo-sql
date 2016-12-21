@@ -4,9 +4,9 @@ module Types (
     QueryExpr (..)
   , QueryOp (..)
   , Field
+  , DocValue
   , Operator
   , BsonType
-
   , intToBsonType
   , bsonTypeToInt
   ) where
@@ -18,7 +18,7 @@ import qualified Data.Bson as B
 
 type Field = T.Text
 type Operator = T.Text
-type Value = B.Value
+type DocValue = B.Value
 
 
 data FindExpr = FindExpr QueryExpr Projection deriving (Show, Eq)
@@ -38,15 +38,13 @@ data QueryExpr = ExprConstr QueryOp
                  -- Note: $nor expands to ExprNOT (ExprOR A B)
                deriving (Show, Eq)
 
-data QueryOp = OpEQ Field Value
-             | OpLT Field Value
-             | OpLE Field Value
-             | OpGT Field Value
-             | OpGE Field Value
-             | OpLTE Field Value
-             | OpGTE Field Value
+data QueryOp = OpEQ Field DocValue
+             | OpLT Field DocValue
+             | OpGT Field DocValue
+             | OpGE Field DocValue
+             | OpLE Field DocValue
                -- $ne expands to ExprNOT (ExprConstr (OpEQ field value))
-             | OpIN Field [Value]
+             | OpIN Field [DocValue]
                -- $nin expands to ExprNot (ExprConstr (OpIN field array))
              | OpMOD Field Int Int
              | OpREGEX Field T.Text (Maybe T.Text)
@@ -66,29 +64,6 @@ data ProjOp = ProjInclude Field
               -- TODO : Projection operators
               deriving (Show, Eq)
 
--- Constructing operator expressions
-{-
-eq = OpEQ
-lt = OpLT
-gt = OpGT
-ge = OpGE
-lte = OpLTE
-gte = OpGTE
-ne field value = ExprNOT (ExprConstr (OpEQ field value))
-in_ = OpIN
-nin field value = ExprNOT (ExprConstr (in_ field value))
-mod_ = OpMOD
-regex = OpREGEX
-text = OpTEXT
-all_ field values = ExprAND $ fmap f values where
-  f value = ExprConstr (OpEQ field value)
-ematch = OpEMATCH
-size = OpSIZE
-exists = OpEXISTS
-type_ = OpTYPE
--}
-
--- TODO: use bson library?
 data BsonType = Double            -- 1
               | String            -- 2
               | Object            -- 3

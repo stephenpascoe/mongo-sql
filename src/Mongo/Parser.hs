@@ -51,12 +51,12 @@ fieldConstraint field val = ExprConstr <$> constraint "$eq" field val
 {-
 constraint
 -}
-constraint :: Operator  -> Field -> Value -> Parser QueryOp
+constraint :: Operator  -> Field -> A.Value -> Parser QueryOp
 constraint "$eq" f v            = OpEQ f <$> bsonifyValue v
 constraint "$lt" f v            = OpLT f <$> bsonifyValue v
 constraint "$gt" f v            = OpGT f <$> bsonifyValue v
-constraint "$lte" f v           = OpLTE f <$> bsonifyValue v
-constraint "$gte" f v           = OpGTE f <$> bsonifyValue v
+constraint "$lte" f v           = OpLE f <$> bsonifyValue v
+constraint "$gte" f v           = OpGE f <$> bsonifyValue v
 constraint "$in" f (Array a)    = OpIN f <$> traverse bsonifyValue (V.toList a)
 constraint "$exists" f (Bool b) = pure $ OpEXISTS f b
 constraint "$type" f (Number x) = OpTYPE f <$> case S.floatingOrInteger x of

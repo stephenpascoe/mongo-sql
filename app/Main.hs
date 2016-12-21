@@ -1,14 +1,6 @@
 module Main where
 
-import Data.Aeson as A
-import qualified Data.ByteString.Lazy as BL
 import Lib
-
--- Return an error or string to print.
-parseLine :: BL.ByteString -> A.Result QueryExpr
-parseLine str = case A.decode str of
-  Nothing -> Error "ERROR"
-  Just obj -> A.fromJSON obj
 
 main = undefined
 {-

@@ -5,7 +5,9 @@ module Main where
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Instances
+
 import Lib
+import Types
 
 import Data.Aeson as A
 import qualified Data.Text as T

@@ -1,6 +1,6 @@
 module Mongo.Encoder where
 
-import Data.Aeson
+import Data.Aeson as A
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Scientific as S
@@ -18,7 +18,7 @@ instance ToJSON QueryExpr where
 intToScientific :: Int -> S.Scientific
 intToScientific x = S.scientific (toInteger x) 0
 
-mkOp :: T.Text -> Field -> B.Value -> Value
+mkOp :: T.Text -> Field -> DocValue -> A.Value
 mkOp op lhs rhs = object [ lhs .= object [op .= aesonifyValue rhs] ]
 
 -- | Fold a list of field expressions into a single object
@@ -33,7 +33,7 @@ foldExprs = foldFields . fmap toJSON where
     return (Object $ H.fromList allValues)
 
 
-unparse :: QueryExpr -> Value
+unparse :: QueryExpr -> A.Value
 unparse (ExprNOT (ExprConstr (OpEQ field value))) = mkOp "$ne" field value
 unparse (ExprNOT (ExprConstr (OpIN field lst))) = mkOp "$nin" field $ B.Array lst
 unparse (ExprAND exprs) = object [ "$and" .= foldExprs exprs ]
@@ -42,7 +42,7 @@ unparse (ExprNOT (ExprOR exprs)) = object [ "$nor" .= foldExprs exprs ]
 unparse (ExprNOT expr) = object [ "$not" .= toJSON expr ]
 unparse (ExprConstr op) = unparseConstr op
 
-unparseConstr :: QueryOp -> Value
+unparseConstr :: QueryOp -> A.Value
 unparseConstr (OpEQ field value) = object [ field .= aesonifyValue value ]
 unparseConstr (OpLT field value) = mkOp "$lt" field value
 unparseConstr (OpLE field value) = mkOp field "$lte" value
@@ -61,7 +61,7 @@ unparse (OpALL field array) = mkOp "$all" field (Array array)
 
 -- | Convert a BSON value into an Aeson value
 -- TODO : This function is not total.  Deprecated, just use until we move to JSON parser
-aesonifyValue :: B.Value -> Value
+aesonifyValue :: DocValue -> A.Value
 aesonifyValue (B.Float f) = toJSON f
 aesonifyValue (B.String s) = toJSON s
 aesonifyValue (B.Doc doc) = Object asAeson where
