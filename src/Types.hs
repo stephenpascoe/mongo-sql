@@ -1,13 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types (
-    Expr (..)
-  , FieldOp (..)
+    QueryExpr (..)
+  , QueryOp (..)
   , Field
   , Operator
   , BsonType
-  , eq, lt, gt, ge, lte, gte, ne, in_, nin, mod_, regex, text, all_
-  , ematch, size, exists, type_
 
   , intToBsonType
   , bsonTypeToInt
@@ -15,11 +13,15 @@ module Types (
 
 import qualified Data.Text as T
 import qualified Data.Aeson as A
+import qualified Data.Bson as B
 
 
 type Field = T.Text
 type Operator = T.Text
-type Value = A.Value
+type Value = B.Value
+
+
+data FindExpr = FindExpr QueryExpr Projection deriving (Show, Eq)
 
 {-
 A query {field1: op1, field2: op2, ...} is effectively
@@ -29,7 +31,14 @@ or field* can be a logical operator
 Therefore the first level of parsing is to AND together key/value pairs
 -}
 
-data FieldOp = OpEQ Field Value
+data QueryExpr = ExprConstr QueryOp
+               | ExprOR [QueryExpr]
+               | ExprAND [QueryExpr]
+               | ExprNOT QueryExpr
+                 -- Note: $nor expands to ExprNOT (ExprOR A B)
+               deriving (Show, Eq)
+
+data QueryOp = OpEQ Field Value
              | OpLT Field Value
              | OpLE Field Value
              | OpGT Field Value
@@ -44,20 +53,21 @@ data FieldOp = OpEQ Field Value
              | OpTEXT Field T.Text (Maybe T.Text)
                -- $all expands to ExprAnd [(ExprConstr (OpEQ field val1)),
                --                          (ExprConstr (OpEQ field val2))]
-             | OpEMATCH Field [Expr]
+             | OpEMATCH Field [QueryExpr]
              | OpSIZE Field Integer
              | OpEXISTS Field Bool
              | OpTYPE Field BsonType
              deriving (Show, Eq)
 
-data Expr = ExprConstr FieldOp
-          | ExprOR [Expr]
-          | ExprAND [Expr]
-          | ExprNOT Expr
-          -- Note: $nor expands to ExprNOT (ExprOR A B)
-          deriving (Show, Eq)
+data Projection = Projection [ProjOp]
+                  deriving (Show, Eq)
+data ProjOp = ProjInclude Field
+            | ProjExclude Field
+              -- TODO : Projection operators
+              deriving (Show, Eq)
 
 -- Constructing operator expressions
+{-
 eq = OpEQ
 lt = OpLT
 gt = OpGT
@@ -76,6 +86,7 @@ ematch = OpEMATCH
 size = OpSIZE
 exists = OpEXISTS
 type_ = OpTYPE
+-}
 
 -- TODO: use bson library?
 data BsonType = Double            -- 1
