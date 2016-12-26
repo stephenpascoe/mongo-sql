@@ -1,12 +1,15 @@
 module Lib
     ( parseExpression
     , queryExprToSQL
+    , jsonToSQL
     ) where
 
 import qualified Data.Text as T
+import qualified Data.ByteString.Lazy as BL
 import qualified Language.SQL.SimpleSQL.Parser as SP
 import qualified Language.SQL.SimpleSQL.Syntax as SS
 import qualified Language.SQL.SimpleSQL.Pretty as SY
+import qualified Data.Aeson as A
 
 import Types
 import Mongo.Parser
@@ -22,3 +25,8 @@ prettySqlExpr = T.pack . SY.prettyValueExpr SS.SQL2011
 
 queryExprToSQL :: QueryExpr -> Maybe T.Text
 queryExprToSQL expr = prettySqlExpr <$> queryToSQL expr
+
+jsonToSQL :: BL.ByteString -> Maybe T.Text
+jsonToSQL jsonTxt = do
+  json <- A.decode jsonTxt
+  queryExprToSQL json

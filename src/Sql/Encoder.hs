@@ -1,13 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Sql.Encoder ( queryToSQL
+                   , findToSQL
                    ) where
+
+import Data.Foldable
 
 import qualified Language.SQL.SimpleSQL.Syntax as S
 import qualified Data.Bson as B
 import qualified Data.Text as T
 
 import Types
+
+findToSQL :: FindExpr -> Maybe S.QueryExpr
+findToSQL (FindExpr col query proj) = do
+  qExpr <- queryToSQL query
+  slist <- projToSL proj
+  return $ S.makeSelect { S.qeSelectList    = slist
+                        , S.qeFrom          = [toTableRef col]
+                        , S.qeWhere         = Just qExpr
+                        }
+  where
+    toTableRef txt = S.TRSimple [S.Name $ T.unpack txt]
+    projToSL :: Projection -> Maybe [(S.ValueExpr, Maybe S.Name)]
+    projToSL (Projection pl) = traverse f pl
+    f (ProjInclude field) = Just (S.Iden [S.Name $ T.unpack field], Nothing)
+    -- TODO : move to error monad to report this is not supported
+    f (ProjExclude field) = Nothing
 
 queryToSQL :: QueryExpr -> Maybe S.ValueExpr
 
@@ -59,6 +78,7 @@ mkNameList name = S.Name . T.unpack <$> T.splitOn "." name
 
 -- TODO : Proper implementation of documents as SQL values
 valToExpr :: DocValue -> Maybe S.ValueExpr
+valToExpr (B.String txt) = Just $ S.StringLit (T.unpack txt)
 valToExpr val = Just $ S.App (mkNameList "bson") [S.StringLit (show val)]
 
 

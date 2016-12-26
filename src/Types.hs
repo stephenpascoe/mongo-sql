@@ -7,6 +7,9 @@ module Types (
   , DocValue
   , Operator
   , BsonType
+  , FindExpr (..)
+  , Projection (..)
+  , ProjOp (..)
   , intToBsonType
   , bsonTypeToInt
   ) where
@@ -19,9 +22,10 @@ import qualified Data.Bson as B
 type Field = T.Text
 type Operator = T.Text
 type DocValue = B.Value
+type Collection = T.Text
 
 
-data FindExpr = FindExpr QueryExpr Projection deriving (Show, Eq)
+data FindExpr = FindExpr Collection QueryExpr Projection deriving (Show, Eq)
 
 {-
 A query {field1: op1, field2: op2, ...} is effectively
