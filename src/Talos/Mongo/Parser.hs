@@ -15,17 +15,17 @@ import qualified Data.Bson as B
 import Talos.Types
 
 instance FromJSON QueryExpr where
-  parseJSON = query
+  parseJSON = parseQuery
 
 {-
 A field dict is a dict of field names where values are field constraints
 -}
-query :: A.Value -> Parser QueryExpr
-query (Object obj) = collapseLogic . ExprAND <$> traverse f (H.toList obj) where
-  f ("$and", Array a) = ExprAND <$> traverse query (V.toList a)
-  f ("$or", Array a) = ExprOR <$> traverse query (V.toList a)
+parseQuery :: A.Value -> Parser QueryExpr
+parseQuery (Object obj) = collapseLogic . ExprAND <$> traverse f (H.toList obj) where
+  f ("$and", Array a) = ExprAND <$> traverse parseQuery (V.toList a)
+  f ("$or", Array a) = ExprOR <$> traverse parseQuery (V.toList a)
   f (field, val) = fieldConstraint field val
-query _ = empty
+parseQuery _ = empty
 
 -- Remove duplicate and/or/not
 collapseLogic :: QueryExpr -> QueryExpr
@@ -65,7 +65,7 @@ constraint "$type" f (Number x) = OpTYPE f <$> case S.floatingOrInteger x of
 constraint "$size" f (Number x) = OpSIZE f <$> case S.floatingOrInteger x of
     Left _ -> empty
     Right i  -> pure i
-constraint "$elemMatch" f (Array a) = OpEMATCH f <$> traverse query (V.toList a)
+constraint "$elemMatch" f (Array a) = OpEMATCH f <$> traverse parseQuery (V.toList a)
 
 constraint "$mod" field (Array a) = maybe empty pure $ do
   [divisor, remainder] <- traverse f (V.toList a)
