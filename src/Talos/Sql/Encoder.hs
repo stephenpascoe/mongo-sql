@@ -54,13 +54,16 @@ opToSQL (OpIN field values) = S.In True fieldId <$> inList where
 opToSQL (OpMOD field div rem) = Just $ S.BinOp (fieldToSQL field) (mkOp "=") modExpr where
   modExpr = S.BinOp (S.NumLit $ show div) (mkOp "%") (S.NumLit $ show rem)
 
+opToSQL (OpEXISTS field bool) = if bool then Just subexpr
+                                else Just $ S.PrefixOp [S.Name "NOT"] subexpr
+  where
+    subexpr = S.PrefixOp [S.Name "EXISTS"] $ S.Iden $ mkNameList field
 
 -- TODO : All these operators
 opToSQL (OpREGEX field pat opts) = undefined
 opToSQL (OpTEXT field txt opts) = undefined
 opToSQL (OpEMATCH field exprs) = undefined
 opToSQL (OpSIZE field size) = undefined
-opToSQL (OpEXISTS field bool) = undefined
 opToSQL (OpTYPE field btype) = undefined
 
 

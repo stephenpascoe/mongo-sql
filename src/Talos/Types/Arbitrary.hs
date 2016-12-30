@@ -19,7 +19,7 @@ instance Arbitrary FindExpr where
 
 instance Arbitrary Projection where
   arbitrary = seqScale $ Projection <$> ops where
-    ops = listOf (ProjInclude <$> genSafeText)
+    ops = listOf (ProjInclude <$> genId)
 
 instance Arbitrary QueryExpr where
   arbitrary = seqScale $ frequency [ (6, ExprConstr <$> arbitrary)
@@ -40,15 +40,16 @@ instance Arbitrary B.Value where
                                    ]
 
 instance Arbitrary QueryOp where
-  arbitrary = seqScale $ oneof [ OpEQ <$> genSafeText <*> arbitrary
-                               , OpLT <$> genSafeText <*> arbitrary
-                               , OpGT <$> genSafeText <*> arbitrary
-                               , OpLE <$> genSafeText <*> arbitrary
-                               , OpGE <$> genSafeText <*> arbitrary
-                               , OpIN <$> genSafeText <*> arbitrary
-                               , OpMOD <$> genSafeText <*> arbitrary <*> arbitrary
+  arbitrary = seqScale $ oneof [ OpEQ <$> genId <*> arbitrary
+                               , OpLT <$> genId <*> arbitrary
+                               , OpGT <$> genId <*> arbitrary
+                               , OpLE <$> genId <*> arbitrary
+                               , OpGE <$> genId <*> arbitrary
+                               , OpIN <$> genId <*> arbitrary
+                               , OpMOD <$> genId <*> arbitrary <*> arbitrary
                                  -- TODO : Not generated: OpREGEX OpTEXT OpEMATCH
-                                 -- TODO : Not generated: OpSIZE OpEXISTS OpTYPE
+                               , OpEXISTS <$> genId <*> arbitrary
+                                 -- TODO : Not generated: OpSIZE OpTYPE
                                ]
 
 
