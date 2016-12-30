@@ -18,28 +18,30 @@ import Talos.Types.Arbitrary
 import Talos.Sql.Encoder
 
 
-fromJSON_eq :: A.Value -> QueryExpr -> Bool
-fromJSON_eq obj expr = fromJSON obj == A.Success expr
+main :: IO ()
+main = hspec $ do
+  describe "MongoDB JSON query language" $ do
+    -- General parsing
+    it "Any query expression will encode to SQL AST" $ property $
+      \expr -> isJust $ findToSqlText expr
+    it "Any find expression will encode to SQL" $ property $
+      \expr -> isJust $ queryToSQL expr
+    -- Specific examples
+    it "Example query 1 parses" $ do
+      isJust (decode eg1 :: Maybe QueryExpr) `shouldBe` True
+    -- Single expression decoding
+    it "encodes default equality" $ property $
+      \a b -> fromJSON (object [ a .= b ]) == A.Success (ExprConstr $ OpEQ a (B.String b))
+    it "encodes equality with $eq" $ property $
+      \a b -> fromJSON (object [ a .= object [ "$eq" .= b ] ])
+              == A.Success (ExprConstr $ OpEQ a (B.String b))
+    it "encodes logical and" $ property $
+      \a b c d -> fromJSON (object [ "$and" .= [object [a .= b], object [c .= d]] ])
+                  == A.Success (ExprAND [ ExprConstr $ OpEQ a (B.String b)
+                                        , ExprConstr $ OpEQ c (B.String d)
+                                        ])
 
-
-prop_eq1 :: T.Text -> T.Text -> Bool
-prop_eq1 a b = fromJSON_eq (object [ a .= b ]) (ExprConstr $ OpEQ a (B.String b))
-
-
-prop_eq2 :: T.Text -> T.Text -> Bool
-prop_eq2 a b = fromJSON_eq (object [ a .= object [ "$eq" .= b ] ]) (ExprConstr $ OpEQ a (B.String b))
-
-
-prop_and1 :: T.Text -> T.Text -> T.Text -> T.Text -> Bool
-prop_and1 a b c d = fromJSON_eq (object [ "$and" .= [object [a .= b], object [c .= d]] ])
-                                (ExprAND [ExprConstr $ OpEQ a (B.String b), ExprConstr $ OpEQ c (B.String d)])
-
-
-prop_sql_serialise :: FindExpr -> Bool
-prop_sql_serialise expr = isJust $ findToSqlText expr
-
-prop_query_serialise :: QueryExpr -> Bool
-prop_query_serialise expr = isJust $ queryToSQL expr
+------------------------------------------------------------------------------
 
 eg1 = [r|{"$and": [
            {"tracking_id.asic_id": "AAAA"},
@@ -53,12 +55,3 @@ eg1 = [r|{"$and": [
            ]}
          ]}
 |]
-
-main :: IO ()
-main = hspec $ do
-  describe "MongoDB JSON query language" $ do
-    it "encodes default equality" $ property prop_eq1
-    it "encodes equality with $eq" $ property prop_eq2
-    it "encodes logical and" $ property prop_and1
-    it "Any query expression will encode to SQL AST" $ property prop_query_serialise
-    it "Any find expression will encode to SQL" $ property prop_sql_serialise
