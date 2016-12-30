@@ -1,4 +1,4 @@
-module Lib
+module Talos.Lib
     ( parseExpression
     , queryExprToSQL
     , jsonToSQL
@@ -12,9 +12,9 @@ import qualified Language.SQL.SimpleSQL.Syntax as SS
 import qualified Language.SQL.SimpleSQL.Pretty as SY
 import qualified Data.Aeson as A
 
-import Types
-import Mongo.Parser
-import Sql.Encoder
+import Talos.Types
+import Talos.Mongo.Parser
+import Talos.Sql.Encoder
 
 -- Convenience function for parsing expressions
 parseExpression :: String -> Either SP.ParseError SS.ValueExpr

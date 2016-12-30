@@ -6,16 +6,16 @@ import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Instances
 
-import Lib
-import Types
-import Types.Arbitrary
-import Sql.Encoder
-
 import Data.Aeson as A
 import qualified Data.Text as T
 import qualified Data.Bson as B
 import Text.RawString.QQ
 import Data.Maybe
+
+import Talos.Lib
+import Talos.Types
+import Talos.Types.Arbitrary
+import Talos.Sql.Encoder
 
 
 fromJSON_eq :: A.Value -> QueryExpr -> Bool

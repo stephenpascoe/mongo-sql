@@ -1,8 +1,8 @@
-name:                mongo-sql
-version:             0.1.0.0
+name:                talos
+version:             0.1.1.0
 synopsis:            Convert between MongoDB queries and SQL
 description:         Please see README.md
-homepage:            http://github.com/stephenpascoe/mongo-sql#readme
+homepage:            http://github.com/stephenpascoe/talos#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Stephen Pascoe
@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib, Types, Types.Arbitrary, Mongo.Parser, Mongo.Encoder, Sql.Encoder
+  exposed-modules:     Talos.Lib, Talos.Types, Talos.Types.Arbitrary, Talos.Mongo.Parser,
+                       Talos.Mongo.Encoder, Talos.Sql.Encoder
   build-depends:       base >= 4.7 && < 5
                      , groom >= 0.1.2 && < 0.2
                      , simple-sql-parser >= 0.4.1 && < 0.6.0
@@ -29,30 +30,30 @@ library
                      , raw-strings-qq >= 1.0 && < 2.0
                      , bson >= 0.3.2.1 && < 0.4
                      , bytestring >= 0.10.6.0 && < 0.11
-                     , time >= 1.5.0.1 && < 0.2
+                     , time >= 1.5.0.1 && < 1.6
 
   default-language:    Haskell2010
   default-extensions:  OverloadedStrings
 --  ghc-options:         -Wall
 
-executable mongo-sql-exe
+executable talos-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , mongo-sql
+                     , talos
                      , aeson >= 0.8.0.2 && < 0.11
                      , bytestring >= 0.10.6.0 && < 0.11
 
   default-extensions:  OverloadedStrings
   default-language:    Haskell2010
 
-test-suite mongo-sql-test
+test-suite talos-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
-                     , mongo-sql
+                     , talos
                      , hspec >= 2.1.0 && < 2.3
                      , QuickCheck >= 2.8.1 && < 2.9
                      , aeson >= 0.8.0.2 && < 0.11
@@ -70,4 +71,4 @@ test-suite mongo-sql-test
 
 source-repository head
   type:     git
-  location: https://github.com/stephenpascoe/mongo-sql
+  location: https://github.com/stephenpascoe/talos

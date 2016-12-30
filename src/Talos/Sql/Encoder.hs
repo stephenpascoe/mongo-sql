@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Sql.Encoder ( queryToSQL
-                   , findToSQL
-                   ) where
+module Talos.Sql.Encoder ( queryToSQL
+                         , findToSQL
+                         ) where
 
 import Data.Foldable
 
@@ -10,7 +10,7 @@ import qualified Language.SQL.SimpleSQL.Syntax as S
 import qualified Data.Bson as B
 import qualified Data.Text as T
 
-import Types
+import Talos.Types
 
 findToSQL :: FindExpr -> Maybe S.QueryExpr
 findToSQL (FindExpr col query proj) = do
