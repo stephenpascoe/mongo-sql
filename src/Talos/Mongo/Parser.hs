@@ -25,7 +25,7 @@ parseQuery (Object obj) = collapseLogic . ExprAND <$> traverse f (H.toList obj) 
   f ("$and", Array a) = ExprAND <$> traverse parseQuery (V.toList a)
   f ("$or", Array a) = ExprOR <$> traverse parseQuery (V.toList a)
   f (field, val) = fieldConstraint field val
-parseQuery _ = empty
+parseQuery val = typeMismatch "QueryExpr" val
 
 -- Remove duplicate and/or/not
 collapseLogic :: QueryExpr -> QueryExpr
@@ -60,14 +60,14 @@ constraint "$gte" f v           = OpGE f <$> bsonifyValue v
 constraint "$in" f (Array a)    = OpIN f <$> traverse bsonifyValue (V.toList a)
 constraint "$exists" f (Bool b) = pure $ OpEXISTS f b
 constraint "$type" f (Number x) = OpTYPE f <$> case S.floatingOrInteger x of
-    Left _ -> empty
+    Left _ -> fail "Failed parsing $type operator"
     Right i  -> pure $ intToBsonType i
 constraint "$size" f (Number x) = OpSIZE f <$> case S.floatingOrInteger x of
-    Left _ -> empty
+    Left _ -> fail "Failed parsing $size operator"
     Right i  -> pure i
 constraint "$elemMatch" f (Array a) = OpEMATCH f <$> traverse parseQuery (V.toList a)
 
-constraint "$mod" field (Array a) = maybe empty pure $ do
+constraint "$mod" field (Array a) = maybe (fail "Failed parsing $mod operator") pure $ do
   [divisor, remainder] <- traverse f (V.toList a)
   return $ OpMOD field divisor remainder
   where
