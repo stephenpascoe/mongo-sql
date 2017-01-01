@@ -5,7 +5,7 @@ module Talos.Mongo.Parser () where
 import Control.Applicative
 import Data.Maybe
 import Data.Aeson as A
-import Data.Aeson.Types (Parser, typeMismatch)
+import Data.Aeson.Types (Parser, typeMismatch, (.:))
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
@@ -14,8 +14,29 @@ import qualified Data.Bson as B
 
 import Talos.Types
 
+instance FromJSON FindExpr where
+  parseJSON = parseFind
+
 instance FromJSON QueryExpr where
   parseJSON = parseQuery
+
+
+parseFind :: A.Value -> Parser FindExpr
+parseFind = A.withObject "FindExpr" $ \o -> do
+  collection <- o .: "collecion"
+  query      <- o .: "query"
+  -- TODO : projection is a dict of flags
+  projList   <- o .: "projection"
+
+  proj       <- A.withArray "Projection" parseProj projList
+
+  return $ FindExpr collection query proj
+
+  where
+    parseProj :: A.Array -> Parser Projection
+    parseProj arr = Projection <$> traverse f (V.toList arr)
+    f (A.String txt) = pure $ ProjInclude txt
+    f x = typeMismatch "Field" x
 
 {-
 A field dict is a dict of field names where values are field constraints

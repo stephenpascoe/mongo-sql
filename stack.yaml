@@ -30,5 +30,5 @@ extra-package-dbs: []
 # arch: x86_64
 
 # Extra directories used by stack for building
-# extra-include-dirs: [/path/to/dir]
-# extra-lib-dirs: [/path/to/dir]
+extra-include-dirs: [/usr/local/Cellar/readline/6.3.8/include]
+extra-lib-dirs: [/usr/local/Cellar/readline/6.3.8/lib]
