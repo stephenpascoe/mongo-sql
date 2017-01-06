@@ -61,7 +61,7 @@ eg1 = [r|{"$and": [
 eg2 = [r|
 {
   "collection": "col1",
-  "projection": ["a", "b", "c"],
+  "projection": {"a": 1, "b": 1, "c": 1},
   "query": {"$or": [
              {"context_tags": {"$exists": false}},
              {"$and": [

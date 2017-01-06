@@ -25,17 +25,21 @@ parseFind :: A.Value -> Parser FindExpr
 parseFind = A.withObject "FindExpr" $ \o -> do
   collection <- o .: "collection"
   query      <- o .: "query"
-  -- TODO : projection is a dict of flags
-  projList   <- o .: "projection"
+  projObj   <- o .: "projection"
 
-  proj       <- A.withArray "Projection" parseProj projList
+  proj      <- A.withObject "Projection" parseProj projObj
 
   return $ FindExpr collection query proj
-
   where
-    parseProj arr = Projection <$> traverse f (V.toList arr)
-    f (A.String txt) = pure $ ProjInclude txt
-    f x = typeMismatch "Field" x
+
+    parseProj :: A.Object -> Parser Projection
+    parseProj obj = pure $ Projection $ foldr f [] (H.toList obj)
+
+    -- TODO : ignores value of each property.  Should check it is 1.
+    -- TODO : _id: 0 would indicate drop _id
+    f (txt, _) acc = ProjInclude txt : acc
+
+
 
 {-
 A field dict is a dict of field names where values are field constraints
