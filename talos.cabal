@@ -1,5 +1,5 @@
 name:                talos
-version:             0.1.1.0
+version:             0.1.2.0
 synopsis:            Convert between MongoDB queries and SQL
 description:         Please see README.md
 homepage:            http://github.com/stephenpascoe/talos#readme
