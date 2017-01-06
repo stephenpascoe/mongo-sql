@@ -23,7 +23,7 @@ instance FromJSON QueryExpr where
 
 parseFind :: A.Value -> Parser FindExpr
 parseFind = A.withObject "FindExpr" $ \o -> do
-  collection <- o .: "collecion"
+  collection <- o .: "collection"
   query      <- o .: "query"
   -- TODO : projection is a dict of flags
   projList   <- o .: "projection"
@@ -33,7 +33,6 @@ parseFind = A.withObject "FindExpr" $ \o -> do
   return $ FindExpr collection query proj
 
   where
-    parseProj :: A.Array -> Parser Projection
     parseProj arr = Projection <$> traverse f (V.toList arr)
     f (A.String txt) = pure $ ProjInclude txt
     f x = typeMismatch "Field" x

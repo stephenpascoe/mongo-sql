@@ -29,6 +29,8 @@ main = hspec $ do
     -- Specific examples
     it "Example query 1 parses" $ do
       isJust (decode eg1 :: Maybe QueryExpr) `shouldBe` True
+    it "Example find expression 1 parses" $ do
+      isJust (decode eg2 :: Maybe FindExpr) `shouldBe` True
     -- Single expression decoding
     it "encodes default equality" $ property $
       \a b -> fromJSON (object [ a .= b ]) == A.Success (ExprConstr $ OpEQ a (B.String b))
@@ -54,4 +56,18 @@ eg1 = [r|{"$and": [
              ]}
            ]}
          ]}
+|]
+
+eg2 = [r|
+{
+  "collection": "col1",
+  "projection": ["a", "b", "c"],
+  "query": {"$or": [
+             {"context_tags": {"$exists": false}},
+             {"$and": [
+               {"context_tags.department": "qc"},
+               {"context_tags.experiment_type": "full_pore_insertion"}
+             ]}
+           ]}
+}
 |]

@@ -3,6 +3,7 @@ module Talos.Lib
     , queryExprToSQL
     , jsonToSQL
     , findToSqlText
+    , FindExpr(..)
     ) where
 
 import qualified Data.Text as T
