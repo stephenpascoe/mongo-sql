@@ -31,9 +31,9 @@ findToSQL (FindExpr col query proj) = do
 queryToSQL :: QueryExpr -> Maybe S.ValueExpr
 
 queryToSQL (ExprConstr op) = opToSQL op
-queryToSQL (ExprOR exprs) = foldExprs (S.Name "OR") exprs
-queryToSQL (ExprAND exprs) = foldExprs (S.Name "AND") exprs
-queryToSQL (ExprNOT expr) = S.PrefixOp [S.Name "NOT"] <$> queryToSQL expr
+queryToSQL (ExprOR exprs) = S.Parens <$> foldExprs (S.Name "OR") exprs
+queryToSQL (ExprAND exprs) = S.Parens <$> foldExprs (S.Name "AND") exprs
+queryToSQL (ExprNOT expr) = S.Parens <$> S.PrefixOp [S.Name "NOT"] <$> queryToSQL expr
 
 foldExprs :: S.Name -> [QueryExpr] -> Maybe S.ValueExpr
 foldExprs name [] = Nothing
@@ -79,9 +79,16 @@ mkOp opStr = [S.Name $ T.unpack opStr]
 mkNameList :: T.Text -> [S.Name]
 mkNameList name = S.Name . T.unpack <$> T.splitOn "." name
 
--- TODO : Proper implementation of documents as SQL values
+
 valToExpr :: DocValue -> Maybe S.ValueExpr
+valToExpr (B.Float x) = Just $ S.NumLit (show x)
 valToExpr (B.String txt) = Just $ S.StringLit (T.unpack txt)
+valToExpr (B.Bool b) = Just $ S.Iden (mkNameList v) where
+  v = if b then "TRUE" else "FALSE"
+valToExpr B.Null = Just $ S.Iden (mkNameList "NULL")
+valToExpr (B.Int32 x) = Just $ S.NumLit (show x)
+valToExpr (B.Int64 x) = Just $ S.NumLit (show x)
+-- TODO : Proper implementation of documents as SQL values
 valToExpr val = Just $ S.App (mkNameList "bson") [S.StringLit (show val)]
 
 
