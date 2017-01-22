@@ -12,7 +12,7 @@ import qualified Data.Text as T
 
 import Talos.Types
 
-findToSQL :: FindExpr -> Maybe S.QueryExpr
+findToSQL :: FindExpr -> Either String S.QueryExpr
 findToSQL (FindExpr col query proj) = do
   qExpr <- queryToSQL query
   slist <- projToSL proj
@@ -22,25 +22,27 @@ findToSQL (FindExpr col query proj) = do
                         }
   where
     toTableRef txt = S.TRSimple [S.Name $ T.unpack txt]
-    projToSL :: Projection -> Maybe [(S.ValueExpr, Maybe S.Name)]
+    projToSL :: Projection -> Either String [(S.ValueExpr, Maybe S.Name)]
     projToSL (Projection pl) = traverse f pl
-    f (ProjInclude field) = Just (S.Iden [S.Name $ T.unpack field], Nothing)
+    f (ProjInclude field) = Right (S.Iden [S.Name $ T.unpack field], Nothing)
     -- TODO : move to error monad to report this is not supported
-    f (ProjExclude field) = Nothing
+    f (ProjExclude field) = Left "Exclude projection constraints are not supported"
 
-queryToSQL :: QueryExpr -> Maybe S.ValueExpr
+queryToSQL :: QueryExpr -> Either String S.ValueExpr
 
 queryToSQL (ExprConstr op) = opToSQL op
 queryToSQL (ExprOR exprs) = S.Parens <$> foldExprs (S.Name "OR") exprs
 queryToSQL (ExprAND exprs) = S.Parens <$> foldExprs (S.Name "AND") exprs
-queryToSQL (ExprNOT expr) = S.Parens <$> S.PrefixOp [S.Name "NOT"] <$> queryToSQL expr
+queryToSQL (ExprNOT expr) = S.Parens <$> (S.PrefixOp [S.Name "NOT"] <$> queryToSQL expr)
+queryToSQL expr = Left ("No SQL equivilent for expression " ++ show expr)
 
-foldExprs :: S.Name -> [QueryExpr] -> Maybe S.ValueExpr
-foldExprs name [] = Nothing
+foldExprs :: S.Name -> [QueryExpr] -> Either String S.ValueExpr
+foldExprs name [] = Left ("Cannot fold empty expression list for " ++ show name)
 foldExprs _ [expr] = queryToSQL expr
-foldExprs name (expr:exprs) = S.BinOp <$> queryToSQL expr <*> pure [name] <*> foldExprs name exprs
+foldExprs name (expr:exprs) = S.BinOp <$> queryToSQL expr
+                                      <*> pure [name] <*> foldExprs name exprs
 
-opToSQL :: QueryOp -> Maybe S.ValueExpr
+opToSQL :: QueryOp -> Either String S.ValueExpr
 opToSQL (OpEQ field value) = mkBinOp field "=" value
 opToSQL (OpLT field value) = mkBinOp field "<" value
 opToSQL (OpGT field value) = mkBinOp field ">" value
@@ -51,26 +53,28 @@ opToSQL (OpIN field values) = S.In True fieldId <$> inList where
   parsed = traverse valToExpr values
   inList = S.InList <$> parsed
 
-opToSQL (OpMOD field div rem) = Just $ S.BinOp (fieldToSQL field) (mkOp "=") modExpr where
+opToSQL (OpMOD field div rem) = Right $ S.BinOp (fieldToSQL field) (mkOp "=") modExpr where
   modExpr = S.BinOp (S.NumLit $ show div) (mkOp "%") (S.NumLit $ show rem)
 
-opToSQL (OpEXISTS field bool) = if bool then Just subexpr
-                                else Just $ S.PrefixOp [S.Name "NOT"] subexpr
+opToSQL (OpEXISTS field bool) = if bool then Right subexpr
+                                else Right $ S.PrefixOp [S.Name "NOT"] subexpr
   where
     subexpr = S.PrefixOp [S.Name "EXISTS"] $ S.Iden $ mkNameList field
 
+opToSQL expr = Left $ "Unsupported expression " ++ show expr
 -- TODO : All these operators
+{-
 opToSQL (OpREGEX field pat opts) = undefined
 opToSQL (OpTEXT field txt opts) = undefined
 opToSQL (OpEMATCH field exprs) = undefined
 opToSQL (OpSIZE field size) = undefined
 opToSQL (OpTYPE field btype) = undefined
-
+-}
 
 -- |
 -- = Utility functions
 
-mkBinOp :: Field -> T.Text -> DocValue -> Maybe S.ValueExpr
+mkBinOp :: Field -> T.Text -> DocValue -> Either String S.ValueExpr
 mkBinOp field op value = S.BinOp (fieldToSQL field) (mkOp op) <$> valToExpr value
 
 mkOp :: T.Text -> [S.Name]
@@ -80,22 +84,21 @@ mkNameList :: T.Text -> [S.Name]
 mkNameList name = S.Name . T.unpack <$> T.splitOn "." name
 
 
-valToExpr :: DocValue -> Maybe S.ValueExpr
-valToExpr (B.Float x) = Just $ S.NumLit (show x)
-valToExpr (B.String txt) = Just $ S.StringLit (T.unpack txt)
-valToExpr (B.Bool b) = Just $ S.Iden (mkNameList v) where
+valToExpr :: DocValue -> Either String S.ValueExpr
+valToExpr (B.Float x) = Right $ S.NumLit (show x)
+valToExpr (B.String txt) = Right $ S.StringLit (T.unpack txt)
+valToExpr (B.Bool b) = Right $ S.Iden (mkNameList v) where
   v = if b then "TRUE" else "FALSE"
-valToExpr B.Null = Just $ S.Iden (mkNameList "NULL")
-valToExpr (B.Int32 x) = Just $ S.NumLit (show x)
-valToExpr (B.Int64 x) = Just $ S.NumLit (show x)
+valToExpr B.Null = Right $ S.Iden (mkNameList "NULL")
+valToExpr (B.Int32 x) = Right $ S.NumLit (show x)
+valToExpr (B.Int64 x) = Right $ S.NumLit (show x)
 -- TODO : Proper implementation of documents as SQL values
-valToExpr val = Just $ S.App (mkNameList "bson") [S.StringLit (show val)]
+valToExpr val = Right $ S.App (mkNameList "bson") [S.StringLit (show val)]
 
-
-valToName :: DocValue -> Maybe [S.Name]
-valToName (B.String "") = Nothing
-valToName (B.String txt) = Just $ (S.Name . T.unpack) <$> T.splitOn "." txt
-valToName _ = Nothing
+valToName :: DocValue -> Either String [S.Name]
+valToName (B.String "") = Left "Names cannot be empty strings"
+valToName (B.String txt) = Right $ (S.Name . T.unpack) <$> T.splitOn "." txt
+valToName val = Left $ "Unrecognised DocValue: " ++ show val
 
 fieldToSQL :: Field -> S.ValueExpr
 fieldToSQL field = S.Iden [S.Name . T.unpack $ field]

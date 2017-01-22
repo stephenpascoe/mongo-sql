@@ -11,6 +11,7 @@ import qualified Data.Text as T
 import qualified Data.Bson as B
 import Text.RawString.QQ
 import Data.Maybe
+import Data.Either
 
 import Talos.Lib
 import Talos.Types
@@ -23,9 +24,9 @@ main = hspec $ do
   describe "MongoDB JSON query language" $ do
     -- General parsing
     it "Any query expression will encode to SQL AST" $ property $
-      \expr -> isJust $ findToSqlText expr
+      \expr -> isRight $ findToSqlText expr
     it "Any find expression will encode to SQL" $ property $
-      \expr -> isJust $ queryToSQL expr
+      \expr -> isRight $ queryToSQL expr
     -- Specific examples
     it "Example query 1 parses" $ do
       isJust (decode eg1 :: Maybe QueryExpr) `shouldBe` True

@@ -27,13 +27,13 @@ prettySqlExpr = T.pack . SY.prettyValueExpr SS.SQL2011
 prettySqlQuery :: SS.QueryExpr -> T.Text
 prettySqlQuery = T.pack . SY.prettyQueryExpr SS.SQL2011
 
-queryExprToSQL :: QueryExpr -> Maybe T.Text
+queryExprToSQL :: QueryExpr -> Either String T.Text
 queryExprToSQL expr = prettySqlExpr <$> queryToSQL expr
 
-jsonToSQL :: BL.ByteString -> Maybe T.Text
+jsonToSQL :: BL.ByteString -> Either String T.Text
 jsonToSQL jsonTxt = do
-  json <- A.decode jsonTxt
+  json <- A.eitherDecode jsonTxt
   queryExprToSQL json
 
-findToSqlText :: FindExpr -> Maybe T.Text
+findToSqlText :: FindExpr -> Either String T.Text
 findToSqlText expr = prettySqlQuery <$> findToSQL expr

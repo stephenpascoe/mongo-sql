@@ -27,8 +27,8 @@ repl = do
 process :: BL.ByteString -> IO ()
 process line =
   let maybeExpr = do
-        expr <- A.decode line
+        expr <- A.eitherDecode line
         findToSqlText expr
   in case maybeExpr of
-    Nothing -> TIO.putStrLn $ T.concat ["ERROR: Doesn't parse!"]
-    Just sqlTxt -> TIO.putStrLn sqlTxt
+    Left err -> TIO.putStrLn $ T.concat ["ERROR: ", T.pack err]
+    Right sqlTxt -> TIO.putStrLn sqlTxt
