@@ -13,10 +13,10 @@ import Text.RawString.QQ
 import Data.Maybe
 import Data.Either
 
-import Talos.Lib
-import Talos.Types
-import Talos.Types.Arbitrary
-import Talos.Sql.Encoder
+import Transfuser.Lib
+import Transfuser.Types
+import Transfuser.Types.Arbitrary
+import Transfuser.Sql.Encoder
 
 
 main :: IO ()

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Talos.Mongo.Parser () where
+module Transfuser.Mongo.Parser () where
 
 import Control.Applicative
 import Data.Maybe
@@ -12,7 +12,7 @@ import qualified Data.Vector as V
 import qualified Data.Scientific as S
 import qualified Data.Bson as B
 
-import Talos.Types
+import Transfuser.Types
 
 instance FromJSON FindExpr where
   parseJSON = parseFind

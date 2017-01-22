@@ -10,7 +10,7 @@ import qualified Data.Aeson as A
 import System.Console.Haskeline
 import Control.Monad.Trans
 
-import Talos.Lib
+import Transfuser.Lib
 
 type Repl a = InputT IO a
 

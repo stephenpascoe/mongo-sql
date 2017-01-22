@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Talos.Types (
+module Transfuser.Types (
     QueryExpr (..)
   , QueryOp (..)
   , Field

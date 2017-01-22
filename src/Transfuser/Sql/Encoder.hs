@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Talos.Sql.Encoder ( queryToSQL
+module Transfuser.Sql.Encoder ( queryToSQL
                          , findToSQL
                          ) where
 
@@ -10,7 +10,7 @@ import qualified Language.SQL.SimpleSQL.Syntax as S
 import qualified Data.Bson as B
 import qualified Data.Text as T
 
-import Talos.Types
+import Transfuser.Types
 
 findToSQL :: FindExpr -> Either String S.QueryExpr
 findToSQL (FindExpr col query proj) = do

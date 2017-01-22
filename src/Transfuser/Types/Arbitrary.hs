@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
-module Talos.Types.Arbitrary () where
+module Transfuser.Types.Arbitrary () where
 
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 import qualified Data.Text as T
 import qualified Data.Bson as B
 
-import Talos.Types
+import Transfuser.Types
 
 -- scale argibrary values to make them readable
 textScale = scale (const 8)

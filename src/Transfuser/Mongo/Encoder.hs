@@ -1,4 +1,4 @@
-module Talos.Mongo.Encoder where
+module Transfuser.Mongo.Encoder where
 
 import Data.Aeson as A
 import qualified Data.Text as T
@@ -9,7 +9,7 @@ import Control.Monad
 import Data.Foldable
 import qualified Data.Bson as B
 
-import Talos.Types
+import Transfuser.Types
 
 
 instance ToJSON QueryExpr where
