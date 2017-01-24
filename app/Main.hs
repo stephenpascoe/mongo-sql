@@ -19,7 +19,7 @@ main = runInputT defaultSettings repl
 
 repl :: Repl ()
 repl = do
-  minput <- getInputLine "talos> "
+  minput <- getInputLine "transfuse> "
   case minput of
     Nothing -> outputStrLn "Goodbye."
     Just input -> liftIO (process (BL.pack input)) >> repl
