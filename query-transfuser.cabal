@@ -2,7 +2,7 @@ name:                query-transfuser
 version:             0.1.2.0
 synopsis:            Convert between MongoDB queries and SQL
 description:         Please see README.md
-homepage:            http://github.com/stephenpascoe/talos#readme
+homepage:            http://github.com/stephenpascoe/query-transfuser#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Stephen Pascoe
